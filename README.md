@@ -26,7 +26,7 @@ This script automates the process of sending ERC-20 tokens to multiple recipient
 1. Clone this repository.
 
    ```bash
-   git clone https://github.com/fandyahmd/tea-auto
+   git clone https://github.com/fandyahmd/tea-auto.git
    ```
 
 2. Install the required dependencies by running:
