@@ -23,13 +23,14 @@ This script automates the process of sending ERC-20 tokens to multiple recipient
 
 ## Installation
 
-1. Clone this repository.
+1. Clone this repository:
 
    ```bash
    git clone https://github.com/fandyahmd/tea-auto.git
+   cd tea-auto
    ```
 
-2. Install the required dependencies by running:
+2. Install dependencies:
 
    ```bash
    npm install
@@ -52,7 +53,7 @@ Create the following files in the same directory as the script:
 1. Run the script using Node.js:
 
    ```bash
-   node index.js
+   npm start
    ```
 
 2. Enter the amount of tokens to send when prompted:
