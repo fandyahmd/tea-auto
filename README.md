@@ -1,121 +1,109 @@
-# Tea Auto
+# 🧾 Tea Auto
 
-This script automates the process of sending ERC-20 tokens or native cryptocurrency (e.g., TEA) to multiple recipients on the Tea Sepolia network using the [`ethers.js`](https://docs.ethers.org/) library.
-
----
-
-## Features
-
-- **Automated Token Transfers**: Distributes ERC-20 tokens or native cryptocurrency to multiple recipients.
-- **File-Based Configuration**: Reads private key, recipient addresses, and token contract address from local files.
-- **Native Token Support**: Automatically switches to native cryptocurrency (e.g., TEA) if no valid token contract address is provided.
-- **Input Validation**: Ensures valid EVM addresses and user inputs.
-- **Error Handling**: Logs errors for invalid inputs, failed transactions, and other issues.
-- **Transaction Delay**: Introduces a delay between transactions to avoid overwhelming the network.
-- **Blockchain Explorer Links**: Provides transaction links for easy verification on the Tea Sepolia block explorer.
+Script ini digunakan untuk mengirim token ERC-20 atau native coin (TEA) ke banyak alamat secara otomatis. Script mendukung banyak private key (multi-wallet), pengambilan data penerima dari file lokal atau URL, dan penjadwalan transfer otomatis dengan delay acak antar transaksi.
 
 ---
 
-## Prerequisites
+## 🔧 Fitur
 
-1. **Node.js**: Ensure you have Node.js installed on your system.
-2. **Dependencies**: Install the required dependencies using `npm install`.
-
----
-
-## Installation
-
-1. Clone this repository:
-
-   ```bash
-   git clone https://github.com/fandyahmd/tea-auto.git
-   cd tea-auto
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   npm install
-   ```
+- **Multi-Wallet**: Mendukung banyak private key untuk mengirim token dari beberapa wallet.
+- **Dukungan Token**: Bisa mengirim native token (TEA) atau ERC-20 token.
+- **Sumber Data Penerima**:
+  - File lokal (`address.txt`)
+  - URL (CSV dengan format tertentu)
+- **Randomisasi**:
+  - Jumlah transfer dibuat acak dalam rentang tertentu.
+  - Delay antar transfer dibuat acak untuk menghindari pola yang mudah ditebak.
+- **Penjadwalan Otomatis**: Script dapat dijadwalkan untuk berjalan otomatis setiap hari pada waktu acak.
+- **Logging**: Semua aktivitas dicatat di file `logs.txt`.
 
 ---
 
-## Configuration
+## 📁 Struktur File
 
-Create the following files in the same directory as the script:
-
-1. **`privatekey.txt`**: Contains the private key of the wallet that will send the tokens.
-2. **`address.txt`**: Contains a list of recipient EVM addresses, one per line.
-3. **`token.txt`**: Contains the contract address of the ERC-20 token to be sent. Leave this file empty or invalid to send native cryptocurrency (e.g., TEA).
-
----
-
-## Usage
-
-1. Run the script using Node.js:
-
-   ```bash
-   npm start
-   ```
-
-2. Enter the amount of tokens to send when prompted:
-
-   ```plaintext
-   [💰] Enter the amount of tokens to send:
-   ```
-
-3. The script will validate the inputs, connect to the Tea Sepolia network, and send the specified amount of tokens or native cryptocurrency to each recipient.
-
----
-
-## File Structure
-
-- **`privatekey.txt`**: Stores the private key of the sender's wallet.
-- **`address.txt`**: Stores the list of recipient EVM addresses.
-- **`token.txt`**: Stores the ERC-20 token contract address. Leave empty to send native cryptocurrency.
-- **`index.js`**: The main script for token send.
-
----
-
-## How It Works
-
-1. **Read Input Files**:
-   - The script reads the private key, recipient addresses, and token contract address from the respective files.
-2. **Validate Inputs**:
-   - Ensures the private key, token contract address, and recipient addresses are valid.
-3. **Connect to Blockchain**:
-   - Uses the RPC URL to connect to the Tea Sepolia network.
-4. **Send Tokens**:
-   - Sends the specified amount of tokens or native cryptocurrency to each valid recipient address.
-   - Introduces a 5-second delay between transactions.
-5. **Log Results**:
-   - Logs transaction hashes and confirmations.
-   - Logs errors for invalid addresses or failed transactions.
-
----
-
-## Example Output
-
-```plaintext
-[💰] Enter the amount of tokens to send: 10
-[🚀] Sending tokens to 0x1234...abcd...
-[✅] Transaction sent! Hash: 0xabc123...
-[🔗] View on Block Explorer: https://sepolia.tea.xyz/tx/0xabc123...
+```
+tea-auto/
+├── .env                  # File untuk menyimpan private key
+├── address.txt           # File berisi daftar alamat penerima
+├── config.js             # File konfigurasi utama
+├── index.js              # Script utama
+├── package.json          # File konfigurasi npm
+├── token.txt             # File berisi alamat kontrak token
+└── logs.txt              # File log aktivitas transfer
 ```
 
 ---
 
-## Error Handling
+## ⚙️ Konfigurasi
 
-- **File Errors**: Logs an error if any required file is missing or unreadable.
-- **Invalid Addresses**: Skips invalid EVM addresses and logs a warning.
-- **Transaction Errors**: Logs errors for failed transactions but continues with the next recipient.
-- **Token Decimals Error**: Logs an error if the script fails to fetch token decimals.
+### 1. `.env`
+
+Rename `.env.example` menjadi `.env` dan isi dengan private key wallet Anda. Jika menggunakan lebih dari satu wallet, pisahkan dengan koma:
+
+```env
+PRIVATE_KEY=0xabc123...,0xdef456...
+```
+
+### 2. `config.js`
+
+File konfigurasi utama untuk mengatur parameter script. Contoh isi file `config.js`:
+
+```js
+export default {
+  rpcUrl: "https://tea-sepolia.g.alchemy.com/public", // RPC endpoint
+  chainId: 10218, // Chain ID sesuai jaringan
+  ExplorerUrl: "https://sepolia.tea.xyz", // URL block explorer
+  defaultTokenAddress: "0x0000000000000000000000000000000000000000", // Default token address
+  tokenAddress: "token.txt", // File berisi alamat kontrak token
+  recipients: "address.txt", // File berisi daftar penerima
+  min_amount: 0.01, // Minimal jumlah transfer
+  max_amount: 0.02, // Maksimal jumlah transfer
+  min_delay: 5, // Minimal delay antar transfer (detik)
+  max_delay: 15, // Maksimal delay antar transfer (detik)
+  max_recipients: 200, // Jumlah alamat yang dikirim per run
+  address_url:
+    "https://docs.google.com/spreadsheets/d/1rImLq4NMEAk5cPBGBW1-d3jI-4QC0oQoFU-JHrDostk/export?format=csv&gid=362289845", // URL untuk daftar penerima
+};
+```
 
 ---
 
-## Notes
+## 🚀 Cara Menjalankan
 
-- If `token.txt` is empty or contains an invalid address, the script will default to sending native cryptocurrency (e.g., TEA).
-- Ensure the private key has sufficient funds to cover both the token transfers and gas fees.
-- Use the provided block explorer links to verify transactions.
+### 1. Install Dependensi
+
+Pastikan Anda sudah menginstall Node.js. Kemudian jalankan perintah berikut untuk menginstall dependensi:
+
+```bash
+npm install
+```
+
+### 2. Jalankan Script
+
+Jalankan script dengan perintah berikut:
+
+```bash
+node index.js
+```
+
+---
+
+## 📝 Catatan Penting
+
+- **Native Token**: Jika ingin mengirim native token (TEA), isi file `token.txt` dengan baris kosong atau alamat yang tidak valid.
+- **Penjadwalan Otomatis**: Script akan menjadwalkan run berikutnya secara otomatis setelah selesai.
+- **Saldo Wallet**: Pastikan saldo wallet cukup untuk menghindari error terkait gas fee atau transaksi yang gagal.
+
+---
+
+## 💡 Tips
+
+- Atur `min_delay` dan `max_delay` untuk menghindari pola transfer yang mudah ditebak.
+
+---
+
+## 🛠️ Troubleshooting
+
+- **Error "No PRIVATE_KEY found in .env"**: Pastikan file `.env` sudah diisi dengan private key.
+- **Error "Failed to fetch address list"**: Periksa URL di `config.js` atau pastikan file penerima lokal tersedia.
+- **Gas Fee Error**: Pastikan saldo wallet cukup untuk membayar gas fee.

@@ -1,148 +1,181 @@
-const { ethers } = require("ethers");
-const fs = require("fs");
-const readline = require("readline");
+import { ethers } from "ethers";
+import fs from "fs";
+import dotenv from "dotenv";
+import CONFIG from "./config.js";
 
-const PRIVATE_KEY_FILE = "privatekey.txt";
-const ADDRESS_FILE = "address.txt";
-const TOKEN_FILE = "token.txt";
-const RPC_URL = "https://tea-sepolia.g.alchemy.com/public";
-const BLOCK_EXPLORER_URL = "https://sepolia.tea.xyz/tx/";
-const CHAIN_ID = 10218;
-const DEFAULT_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000";
+dotenv.config();
 
-function readFileContent(filePath) {
+const readFile = (path) => {
   try {
-    return fs.readFileSync(filePath, "utf-8").trim();
-  } catch (error) {
-    console.warn(
-      `[⚠️] File ${filePath} not found or unreadable. Using default.`
-    );
+    return fs.readFileSync(path, "utf-8").trim();
+  } catch {
+    console.warn(`[⚠️] File not found or unreadable: ${path}`);
     return "";
   }
-}
+};
 
-function validateAddresses(addresses) {
-  return addresses.filter((address) => {
-    if (!ethers.isAddress(address.trim())) {
-      console.warn(`[⚠️] Invalid address skipped: ${address}`);
+const getRandomAmount = (min, max) =>
+  (Math.random() * (max - min) + min).toFixed(6);
+
+const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+
+const waitRandomDelay = async (minSec, maxSec) => {
+  const seconds = Math.floor(Math.random() * (maxSec - minSec + 1)) + minSec;
+  console.log(`[⏳] Waiting ${seconds}s before next transfer...`);
+  await sleep(seconds * 1000);
+};
+
+const validateAddresses = (list) =>
+  list.filter((addr) => {
+    if (!ethers.isAddress(addr)) {
+      console.warn(`[⚠️] Invalid address skipped: ${addr}`);
       return false;
     }
     return true;
   });
-}
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const scheduleNextRun = () => {
+  const now = new Date();
+  const next = new Date(now);
+  next.setDate(now.getDate() + 1);
+  next.setHours(
+    Math.floor(Math.random() * 24),
+    Math.floor(Math.random() * 60),
+    Math.floor(Math.random() * 60),
+    0
+  );
 
-async function sendToRecipient(
-  tokenContract,
-  recipientAddress,
-  amountInWei,
-  isNativeToken
-) {
+  const delayMs = next.getTime() - now.getTime();
+  console.log(`\n📅 Next run scheduled at: ${next.toLocaleString()}`);
+  console.log(
+    `⏲️  Waiting ${Math.round(delayMs / 1000)} seconds until next run...\n`
+  );
+
+  setTimeout(main, delayMs);
+};
+
+const fetchAddressList = async () => {
+  try {
+    const response = await fetch(CONFIG.address_url);
+    const data = await response.text();
+
+    const rawAddresses = data
+      .split("\n")
+      .map((line) => line.split(",")[1])
+      .filter((address) => address?.trim());
+
+    const valid = rawAddresses.filter((addr) => addr.startsWith("0x"));
+    const shuffled = valid.sort(() => 0.5 - Math.random());
+
+    return shuffled.slice(0, CONFIG.max_recipients);
+  } catch (error) {
+    console.error(`[❌] Failed to fetch address list: ${error.message}`);
+    return [];
+  }
+};
+
+const getRecipientList = async () => {
+  if (CONFIG.address_url) {
+    return await fetchAddressList();
+  } else {
+    return readFile(CONFIG.recipients).split("\n");
+  }
+};
+
+const getTokenAddresses = () => {
+  const raw = readFile(CONFIG.tokenAddress);
+  return raw
+    .split("\n")
+    .map((addr) => addr.trim())
+    .filter((addr) => addr.length > 0);
+};
+
+const sendToken = async (
+  recipient,
+  amount,
+  contract,
+  isNative,
+  walletIndex
+) => {
   try {
     console.log(
-      `[🚀] Sending ${
-        isNativeToken ? "TEA" : "tokens"
-      } to ${recipientAddress}...`
+      `[🚀][Wallet ${walletIndex}] Sending ${
+        isNative ? "TEA" : "token"
+      } to ${recipient}...`
     );
-    let tx;
-    if (isNativeToken) {
-      tx = await tokenContract.sendTransaction({
-        to: recipientAddress.trim(),
-        value: amountInWei,
-      });
-    } else {
-      tx = await tokenContract.transfer(recipientAddress.trim(), amountInWei);
-    }
-    console.log(`[✅] Transaction sent! Hash: ${tx.hash}`);
-    console.log(`[🔗] View on Block Explorer: ${BLOCK_EXPLORER_URL}${tx.hash}`);
-  } catch (error) {
-    console.error(
-      `[❌] Error sending to ${recipientAddress}: ${error.message}`
-    );
+    const tx = isNative
+      ? await contract.sendTransaction({ to: recipient, value: amount })
+      : await contract.transfer(recipient, amount);
+
+    console.log(`[✅] Tx Hash: ${tx.hash}`);
+    console.log(`[🌐] Explorer: ${CONFIG.ExplorerUrl}/tx/${tx.hash}`);
+  } catch (err) {
+    console.error(`[❌] Failed to send to ${recipient}: ${err.message}`);
   }
-}
+};
 
-async function sendToken(amountToSend) {
-  let privateKey, recipientAddresses;
+const processTransfers = async () => {
+  const keys = process.env.PRIVATE_KEY?.split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+  if (!keys || keys.length === 0)
+    return console.error("[❌] No PRIVATE_KEY found in .env");
 
-  try {
-    privateKey = readFileContent(PRIVATE_KEY_FILE);
-    recipientAddresses = readFileContent(ADDRESS_FILE).split("\n");
-  } catch (error) {
-    console.error("[❌] Failed to read input files. Exiting...");
-    return;
-  }
+  const rawAddresses = await getRecipientList();
+  const tokenAddresses = getTokenAddresses();
 
-  if (!RPC_URL || !privateKey) {
-    console.error("[❌] Missing required parameters: RPC URL or private key.");
-    return;
-  }
+  const recipients = validateAddresses(
+    rawAddresses.map((line) => line.trim()).filter(Boolean)
+  );
+  if (recipients.length === 0)
+    return console.error("[❌] No valid recipients.");
 
-  let tokenContractAddress = readFileContent(TOKEN_FILE);
-  let isNativeToken = false;
-
-  if (!tokenContractAddress || !ethers.isAddress(tokenContractAddress)) {
-    console.warn(
-      "[⚠️] Invalid or missing token address. Using native token (TEA)."
-    );
-    tokenContractAddress = DEFAULT_TOKEN_ADDRESS;
-    isNativeToken = true;
-  }
-
-  const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID);
-  const wallet = new ethers.Wallet(privateKey, provider);
-  const erc20Abi = [
+  const provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl, CONFIG.chainId);
+  const abi = [
     "function transfer(address to, uint256 amount) public returns (bool)",
     "function decimals() public view returns (uint8)",
   ];
-  const tokenContract = isNativeToken
-    ? wallet
-    : new ethers.Contract(tokenContractAddress, erc20Abi, wallet);
 
-  let amountInWei;
-  try {
-    if (isNativeToken) {
-      amountInWei = ethers.parseUnits(amountToSend, 18);
-    } else {
-      const decimals = await tokenContract.decimals();
-      amountInWei = ethers.parseUnits(amountToSend, decimals);
+  for (let i = 0; i < keys.length; i++) {
+    const wallet = new ethers.Wallet(keys[i], provider);
+    console.log(`\n🔐 Using Wallet ${i + 1}: ${wallet.address}`);
+
+    const tokensToSend = tokenAddresses.length > 0 ? tokenAddresses : [null];
+
+    for (const tokenAddr of tokensToSend) {
+      const isNative = !tokenAddr || !ethers.isAddress(tokenAddr);
+      const contract = isNative
+        ? wallet
+        : new ethers.Contract(tokenAddr, abi, wallet);
+
+      let decimals;
+      try {
+        decimals = isNative ? 18 : await contract.decimals();
+      } catch (err) {
+        console.error(
+          `[❌] Error getting decimals for token ${tokenAddr}: ${err.message}`
+        );
+        continue;
+      }
+
+      for (const recipient of recipients) {
+        const amount = getRandomAmount(CONFIG.min_amount, CONFIG.max_amount);
+        const amountInWei = ethers.parseUnits(amount, decimals);
+        console.log(`[💰][Wallet ${i + 1}] Sending ${amount} to ${recipient}`);
+        await sendToken(recipient, amountInWei, contract, isNative, i + 1);
+        await waitRandomDelay(CONFIG.min_delay, CONFIG.max_delay);
+      }
     }
-  } catch (error) {
-    console.error(`[❌] Error fetching token decimals: ${error.message}`);
-    return;
   }
+};
 
-  recipientAddresses = validateAddresses(recipientAddresses);
-  if (recipientAddresses.length === 0) {
-    console.error("[❌] No valid recipient addresses found.");
-    return;
-  }
+const main = async () => {
+  const timeStr = new Date().toLocaleString();
+  console.log(`\n🏁 Running transfers at: ${timeStr}`);
+  fs.appendFileSync("logs.txt", `[${timeStr}] Transfers executed.\n`);
 
-  for (const recipientAddress of recipientAddresses) {
-    await sendToRecipient(
-      tokenContract,
-      recipientAddress,
-      amountInWei,
-      isNativeToken
-    );
-    await delay(5000);
-  }
-}
+  await processTransfers();
+  scheduleNextRun();
+};
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
-rl.question("[💰] Enter the amount of tokens to send: ", (amountToSend) => {
-  if (!amountToSend || isNaN(amountToSend) || Number(amountToSend) <= 0) {
-    console.error("[❌] Invalid amount entered. Exiting...");
-    rl.close();
-    return;
-  }
-
-  sendToken(amountToSend).then(() => rl.close());
-});
+main();
