@@ -10,7 +10,7 @@ Script ini digunakan untuk mengirim token ERC-20 atau native coin (TEA) ke banya
 - **Dukungan Token**: Bisa mengirim native token (TEA) atau ERC-20 token.
 - **Sumber Data Penerima**:
   - File lokal (`address.txt`)
-  - URL (CSV dengan format tertentu)
+  - URL
 - **Randomisasi**:
   - Jumlah transfer dibuat acak dalam rentang tertentu.
   - Delay antar transfer dibuat acak untuk menghindari pola yang mudah ditebak.
@@ -24,7 +24,7 @@ Script ini digunakan untuk mengirim token ERC-20 atau native coin (TEA) ke banya
 ```
 tea-auto/
 ├── .env                  # File untuk menyimpan private key
-├── address.txt           # File berisi daftar alamat penerima
+├── address.txt           # (Optional) Daftar alamat penerima. Jika kosong, akan menggunakan alamat dari URL
 ├── config.js             # File konfigurasi utama
 ├── index.js              # Script utama
 ├── package.json          # File konfigurasi npm
@@ -62,7 +62,7 @@ export default {
   max_delay: 15, // Maksimal delay antar transfer (detik)
   max_recipients: 200, // Jumlah alamat yang dikirim per run
   address_url:
-    "https://docs.google.com/spreadsheets/d/1rImLq4NMEAk5cPBGBW1-d3jI-4QC0oQoFU-JHrDostk/export?format=csv&gid=362289845", // URL untuk daftar penerima
+    "https://docs.google.com/spreadsheets/d/1rImLq4NMEAk5cPBGBW1-d3jI-4QC0oQoFU-JHrDostk/export?format=csv&gid=362289845", // Don't change this
 };
 ```
 
@@ -70,7 +70,14 @@ export default {
 
 ## 🚀 Cara Menjalankan
 
-### 1. Install Dependensi
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/fandyahmd/tea-auto.git
+cd tea-auto
+```
+
+### 2. Install Dependensi
 
 Pastikan Anda sudah menginstall Node.js. Kemudian jalankan perintah berikut untuk menginstall dependensi:
 
@@ -78,32 +85,25 @@ Pastikan Anda sudah menginstall Node.js. Kemudian jalankan perintah berikut untu
 npm install
 ```
 
-### 2. Jalankan Script
+### 3. Jalankan Script
 
 Jalankan script dengan perintah berikut:
 
 ```bash
-node index.js
+npm start
 ```
 
 ---
 
 ## 📝 Catatan Penting
 
-- **Native Token**: Jika ingin mengirim native token (TEA), isi file `token.txt` dengan baris kosong atau alamat yang tidak valid.
+- **Native Token**: Jika ingin mengirim native token (TEA), kosongkan file `token.txt`.
 - **Penjadwalan Otomatis**: Script akan menjadwalkan run berikutnya secara otomatis setelah selesai.
 - **Saldo Wallet**: Pastikan saldo wallet cukup untuk menghindari error terkait gas fee atau transaksi yang gagal.
-
----
-
-## 💡 Tips
-
-- Atur `min_delay` dan `max_delay` untuk menghindari pola transfer yang mudah ditebak.
 
 ---
 
 ## 🛠️ Troubleshooting
 
 - **Error "No PRIVATE_KEY found in .env"**: Pastikan file `.env` sudah diisi dengan private key.
-- **Error "Failed to fetch address list"**: Periksa URL di `config.js` atau pastikan file penerima lokal tersedia.
 - **Gas Fee Error**: Pastikan saldo wallet cukup untuk membayar gas fee.

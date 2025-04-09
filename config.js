@@ -11,5 +11,5 @@ export default {
   max_delay: 15, // in seconds
   max_recipients: 200,
   address_url:
-    "https://docs.google.com/spreadsheets/d/1rImLq4NMEAk5cPBGBW1-d3jI-4QC0oQoFU-JHrDostk/export?format=csv&gid=362289845", // Kyc address list from Cupang
+    "https://docs.google.com/spreadsheets/d/1rImLq4NMEAk5cPBGBW1-d3jI-4QC0oQoFU-JHrDostk/export?format=csv&gid=362289845", // Don't change this
 };

@@ -62,10 +62,12 @@ const fetchAddressList = async () => {
     const rawAddresses = data
       .split("\n")
       .map((line) => line.split(",")[1])
-      .filter((address) => address?.trim());
+      .filter((address) => address?.trim())
+      .map((address) => address.replace(/["'\r]/g, "").trim())
+      .filter((address) => address.startsWith("0x"));
 
-    const valid = rawAddresses.filter((addr) => addr.startsWith("0x"));
-    const shuffled = valid.sort(() => 0.5 - Math.random());
+    const filtered = validateAddresses(rawAddresses);
+    const shuffled = filtered.sort(() => 0.5 - Math.random());
 
     return shuffled.slice(0, CONFIG.max_recipients);
   } catch (error) {
