@@ -99,21 +99,18 @@ const sendToken = async (
   isNative,
   walletIndex
 ) => {
-  try {
-    console.log(
-      `[🚀][Wallet ${walletIndex}] Sending ${
-        isNative ? "TEA" : "token"
-      } to ${recipient}...`
-    );
-    const tx = isNative
-      ? await contract.sendTransaction({ to: recipient, value: amount })
-      : await contract.transfer(recipient, amount);
+  console.log(
+    `[🚀][Wallet ${walletIndex}] Sending ${
+      isNative ? `${CONFIG.symbol}` : "token"
+    } to ${recipient}...`
+  );
 
-    console.log(`[✅] Tx Hash: ${tx.hash}`);
-    console.log(`[🌐] Explorer: ${CONFIG.ExplorerUrl}/tx/${tx.hash}`);
-  } catch (err) {
-    console.error(`[❌] Failed to send to ${recipient}: ${err.message}`);
-  }
+  const tx = isNative
+    ? await contract.sendTransaction({ to: recipient, value: amount })
+    : await contract.transfer(recipient, amount);
+
+  console.log(`[✅] Tx Hash: ${tx.hash}`);
+  console.log(`[🌐] Explorer: ${CONFIG.ExplorerUrl}/tx/${tx.hash}`);
 };
 
 const processTransfers = async () => {
@@ -160,13 +157,30 @@ const processTransfers = async () => {
         continue;
       }
 
+      let successCount = 0;
+      let failCount = 0;
+
       for (const recipient of recipients) {
-        const amount = getRandomAmount(CONFIG.min_amount, CONFIG.max_amount);
-        const amountInWei = ethers.parseUnits(amount, decimals);
-        console.log(`[💰][Wallet ${i + 1}] Sending ${amount} to ${recipient}`);
-        await sendToken(recipient, amountInWei, contract, isNative, i + 1);
+        try {
+          const amount = getRandomAmount(CONFIG.min_amount, CONFIG.max_amount);
+          const amountInWei = ethers.parseUnits(amount, decimals);
+          console.log(
+            `[💰][Wallet ${i + 1}] Sending ${amount} to ${recipient}`
+          );
+          await sendToken(recipient, amountInWei, contract, isNative, i + 1);
+          successCount++;
+        } catch (err) {
+          console.error(
+            `[❌] Error processing recipient ${recipient}: ${err.message}`
+          );
+          failCount++;
+        }
         await waitRandomDelay(CONFIG.min_delay, CONFIG.max_delay);
       }
+
+      console.log(`\n📊 Transfer Summary (Wallet ${i + 1}):`);
+      console.log(`   ✅ Success: ${successCount}`);
+      console.log(`   ❌ Failed : ${failCount}`);
     }
   }
 };

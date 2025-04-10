@@ -1,6 +1,7 @@
 export default {
   rpcUrl: "https://tea-sepolia.g.alchemy.com/public",
   chainId: 10218,
+  symbol: "TEA",
   ExplorerUrl: "https://sepolia.tea.xyz",
   defaultTokenAddress: "0x0000000000000000000000000000000000000000",
   tokenAddress: "token.txt",

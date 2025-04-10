@@ -52,6 +52,7 @@ File konfigurasi utama untuk mengatur parameter script. Contoh isi file `config.
 export default {
   rpcUrl: "https://tea-sepolia.g.alchemy.com/public", // RPC endpoint
   chainId: 10218, // Chain ID sesuai jaringan
+  symbol: TEA // Native Token
   ExplorerUrl: "https://sepolia.tea.xyz", // URL block explorer
   defaultTokenAddress: "0x0000000000000000000000000000000000000000", // Default token address
   tokenAddress: "token.txt", // File berisi alamat kontrak token
